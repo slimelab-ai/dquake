@@ -1,0 +1,151 @@
+# GNU Makefile for DQuake terminal targets.
+# Use: make -f Makefile.terminal
+#
+# This builds dquake with terminal video output instead of SDL/OpenGL.
+# CURRENT STATUS: Bootstrap/scaffold - terminal video driver scaffold in place,
+# but requires software renderer (not yet implemented) for full functionality.
+#
+# Build produces a minimal executable that initializes terminal mode.
+# See TERMINAL_RENDER_PLAN.md for the architecture and roadmap.
+
+DEBUG   ?= 0
+
+CC ?= gcc
+LINKER = $(CC)
+STRIP ?= strip
+
+# ---------------------------
+# Compiler flags
+# ---------------------------
+
+CPUFLAGS=
+LDFLAGS =
+DFLAGS ?=
+CFLAGS ?= -Wall -Wno-trigraphs -Wno-unused-function
+CFLAGS += $(CPUFLAGS)
+
+ifneq ($(DEBUG),0)
+DFLAGS += -DDEBUG
+CFLAGS += -g
+do_strip=
+else
+DFLAGS += -DNDEBUG
+CFLAGS += -O2
+CFLAGS += -fweb -frename-registers 2>/dev/null || true
+define do_strip
+	$(STRIP) $(1);
+endef
+endif
+
+# Terminal mode flag
+CFLAGS += -DUSE_TERMINAL
+
+# ---------------------------
+# Libraries (minimal)
+# ---------------------------
+
+LIBS := -lm
+
+# ---------------------------
+# Source files
+# ---------------------------
+
+# Common source files (no changes from original)
+COMMON_SRCS := strlcat.c strlcpy.c \
+	chase.c cl_demo.c cl_input.c cl_main.c cl_parse.c cl_tent.c \
+	console.c keys.c menu.c sbar.c view.c wad.c \
+	cmd.c common.c crc.c cvar.c cfgfile.c \
+	host.c host_cmd.c mathlib.c \
+	pr_cmds.c pr_edict.c pr_exec.c \
+	sv_main.c sv_move.c sv_phys.c sv_user.c world.c zone.c
+
+# System files (terminal-specific)
+SYS_SRCS := sys_terminal.c main_terminal.c pl_linux.c
+
+# Network files (Unix)
+NET_SRCS := net_bsd.c net_udp.o net_dgrm.c net_loop.c net_main.c
+
+# Video/Input files (terminal-specific)
+VID_SRCS := vid_terminal.c
+INPUT_SRCS := in_terminal.c
+
+# Sound files (stub for terminal - no audio yet)
+SOUND_SRCS := snd_dma.c snd_mix.c snd_mem.c snd_codec.c
+
+# CD audio (disabled for terminal)
+CD_SRCS := cd_null.c
+
+# All source files
+SRCS := $(COMMON_SRCS) $(SYS_SRCS) $(NET_SRCS) $(VID_SRCS) $(INPUT_SRCS) $(SOUND_SRCS) $(CD_SRCS)
+
+# Object files
+OBJS := $(SRCS:.c=.o)
+
+# Default target
+DEFAULT_TARGET := dquake-terminal
+
+# ---------------------------
+# Phony targets
+# ---------------------------
+
+.PHONY: all clean info
+
+all: info $(DEFAULT_TARGET)
+
+info:
+	@echo "Building DQuake terminal mode (bootstrap)"
+	@echo "See TERMINAL_RENDER_PLAN.md for architecture details"
+	@echo ""
+
+# ---------------------------
+# Compile rules
+# ---------------------------
+
+%.o: %.c
+	$(CC) $(DFLAGS) -c $(CFLAGS) -o $@ $<
+
+# ---------------------------
+# Link
+# ---------------------------
+
+$(DEFAULT_TARGET): $(OBJS)
+	@echo "Linking $@..."
+	$(LINKER) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
+	$(call do_strip,$@)
+	@echo ""
+	@echo "Build complete: $@"
+	@echo "NOTE: This is a bootstrap build. Terminal rendering is scaffolded."
+	@echo "Run with: ./$(DEFAULT_TARGET)"
+
+# ---------------------------
+# Clean
+# ---------------------------
+
+clean:
+	rm -f $(OBJS) $(DEFAULT_TARGET)
+
+# ---------------------------
+# Dependencies (basic)
+# ---------------------------
+
+# All .o files depend on quakedef.h and vid.h
+$(OBJS): quakedef.h vid.h
+
+# Terminal-specific dependencies
+vid_terminal.o: vid_terminal.c quakedef.h vid.h
+in_terminal.o: in_terminal.c quakedef.h input.h keys.h
+sys_terminal.o: sys_terminal.c quakedef.h
+main_terminal.o: main_terminal.c quakedef.h
+
+# ---------------------------
+# Development targets
+# ---------------------------
+
+.PHONY: test
+test: $(DEFAULT_TARGET)
+	@echo "Running terminal test..."
+	./$(DEFAULT_TARGET) +help
+
+.PHONY: debug
+debug:
+	$(error Use "make -f Makefile.terminal DEBUG=1")

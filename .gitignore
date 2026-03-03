@@ -1,0 +1,28 @@
+# Object files
+*.o
+*.obj
+
+# Compiled executables
+dquake
+dquake-terminal
+quakespasm
+
+# IDE files
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.a
+*.lib
+
+# Debug files
+*.dSYM/
+core
+vgcore.*
+
+# Temporary files
+*.tmp
+*.temp
