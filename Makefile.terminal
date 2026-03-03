@@ -31,7 +31,6 @@ do_strip=
 else
 DFLAGS += -DNDEBUG
 CFLAGS += -O2
-CFLAGS += -fweb -frename-registers 2>/dev/null || true
 define do_strip
 	$(STRIP) $(1);
 endef
@@ -60,13 +59,14 @@ COMMON_SRCS := strlcat.c strlcpy.c \
 	sv_main.c sv_move.c sv_phys.c sv_user.c world.c zone.c
 
 # System files (terminal-specific)
-SYS_SRCS := sys_terminal.c main_terminal.c pl_linux.c
+SYS_SRCS := sys_terminal.c main_terminal.c pl_terminal.c
 
 # Network files (Unix)
-NET_SRCS := net_bsd.c net_udp.o net_dgrm.c net_loop.c net_main.c
+NET_SRCS := net_bsd.c net_udp.c net_dgrm.c net_loop.c net_main.c
 
 # Video/Input files (terminal-specific)
 VID_SRCS := vid_terminal.c
+RENDER_SRCS := sw_stub.c
 INPUT_SRCS := in_terminal.c
 
 # Sound files (stub for terminal - no audio yet)
@@ -76,7 +76,7 @@ SOUND_SRCS := snd_dma.c snd_mix.c snd_mem.c snd_codec.c
 CD_SRCS := cd_null.c
 
 # All source files
-SRCS := $(COMMON_SRCS) $(SYS_SRCS) $(NET_SRCS) $(VID_SRCS) $(INPUT_SRCS) $(SOUND_SRCS) $(CD_SRCS)
+SRCS := $(COMMON_SRCS) $(SYS_SRCS) $(NET_SRCS) $(VID_SRCS) $(INPUT_SRCS) $(RENDER_SRCS) $(SOUND_SRCS) $(CD_SRCS)
 
 # Object files
 OBJS := $(SRCS:.c=.o)
@@ -102,7 +102,7 @@ info:
 # ---------------------------
 
 %.o: %.c
-	$(CC) $(DFLAGS) -c $(CFLAGS) -o $@ $<
+	$(CC) $(DFLAGS) $(CFLAGS) -c -o $@ $<
 
 # ---------------------------
 # Link

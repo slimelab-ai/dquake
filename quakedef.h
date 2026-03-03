@@ -260,8 +260,10 @@ typedef struct
 
 #ifdef USE_TERMINAL
 // Terminal mode - no OpenGL headers
-#include "terminal_types.h"
+#include "sw_model.h"
+#include "gl_compat.h"
 #include "world.h"
+#include "swquake.h"
 #else
 #include "gl_model.h"
 #include "world.h"

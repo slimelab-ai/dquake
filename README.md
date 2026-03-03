@@ -2,134 +2,138 @@
 
 A modified QuakeSpasm designed to run Quake directly in your terminal using truecolor ANSI escape sequences.
 
-**Status: BOOTSTRAP** - Terminal video/input drivers scaffolded, software renderer needed for full functionality.
+## Current Status: RUNNABLE BOOTSTRAP
 
-## What is DQuake?
+The terminal build now compiles and runs! The architecture is complete with:
+- Terminal video driver (`vid_terminal.c`)
+- Terminal input driver (`in_terminal.c`)  
+- Software renderer stubs (`sw_stub.c`, `sw_model.h`, `swquake.h`)
+- GL compatibility layer (`gl_compat.h`)
 
-DQuake brings the classic Quake experience to the terminal. Instead of OpenGL/SDL, it uses terminal escape sequences to render the game:
+### What Works
+- ✅ **Builds successfully** - `make -f Makefile.terminal` produces executable
+- ✅ **Starts without crashing** - Basic initialization works
+- ✅ **Game logic running** - Host frame loop executes
+- 🚧 **Terminal rendering** - Scaffold ready, needs real output
 
-- **Truecolor output**: 24-bit ANSI color for rich visuals
-- **Block characters**: Unicode █, ▀, ▄ for text-mode graphics  
-- **Terminal input**: Raw mode keyboard handling with escape sequence parsing
-- **Future**: Kitty graphics protocol and Sixel support for higher fidelity
+### What's Partial
+- ⚠️ **No video output yet** - Terminal driver runs but doesn't render frames
+- ⚠️ **Sound disabled** - Sound DMA stubbed out
 
-## Architecture
+## Quick Start
+
+```bash
+# Build
+make -f Makefile.terminal
+
+# Run with the runner script (auto-detects Quake data)
+./run_dquake.sh
+
+# Or run directly with explicit path
+./dquake-terminal -basedir /path/to/quake
+```
+
+### Getting Quake Data
+
+You need the original Quake data files:
+1. Buy Quake on Steam or GOG
+2. Extract `pak0.pak` and `pak1.pak` to `id1/` directory
+3. Point DQuake to the installation directory
+
+## Architecture Overview
 
 ```
-Quake Engine Core
+Quake Engine Core (unchanged)
        │
        ▼
 ┌─────────────────────────────────┐
-│  vid_terminal.c (NEW)           │
-│  - Terminal video driver        │
-│  - Framebuffer → ANSI output    │
-│  - Truecolor character mapping  │
+│  sw_stub.c (NEW)                │
+│  - Stub GL/software functions   │
+│  - Model loading stubs          │
+│  - Rendering no-ops             │
 └─────────────────────────────────┘
        │
        ▼
 ┌─────────────────────────────────┐
-│  in_terminal.c (NEW)            │
-│  - Terminal input driver       │
+│  vid_terminal.c                  │
+│  - Terminal video driver        │
+│  - Framebuffer → ANSI output   │
+│  - Truecolor escape sequences   │
+└─────────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────┐
+│  in_terminal.c                  │
+│  - Terminal input driver        │
 │  - Raw mode stdin              │
 │  - ESC sequence parser          │
 └─────────────────────────────────┘
 ```
 
-See **[TERMINAL_RENDER_PLAN.md](TERMINAL_RENDER_PLAN.md)** for the full technical design.
+### Key Files
 
-## Current Status
-
-### ✅ Complete
-- Terminal video driver scaffold (`vid_terminal.c`)
-- Terminal input driver scaffold (`in_terminal.c`)  
-- System integration for terminal (`sys_terminal.c`, `main_terminal.c`)
-- Type stubs for non-GL build (`terminal_types.h`)
-- Conditional compilation flags (`USE_TERMINAL`)
-
-### 🚧 In Progress
-- Software renderer implementation (needed to replace OpenGL `gl_*` files)
-- Framebuffer downsampling for terminal dimensions
-- Truecolor ANSI escape output
-
-### 📋 Planned
-- Kitty graphics protocol support
-- Sixel graphics support
-- Mouse input (SGR mode)
-- Performance optimization (dirty cell updates)
+| File | Purpose | Status |
+|------|---------|--------|
+| `sw_stub.c` | GL/rendering stubs | ✅ Complete |
+| `sw_model.h` | Software model types | ✅ Complete |
+| `swquake.h` | Software renderer decls | ✅ Complete |
+| `gl_compat.h` | GL function/type stubs | ✅ Complete |
+| `vid_terminal.c` | Terminal video driver | ⚠️ Scaffold |
+| `in_terminal.c` | Terminal input driver | ⚠️ Scaffold |
+| `sys_terminal.c` | Terminal system funcs | ✅ Complete |
+| `main_terminal.c` | Entry point | ✅ Complete |
 
 ## Building
 
-### Full Build (Requires Software Renderer)
-
-The complete build requires a software renderer to replace the OpenGL-based `gl_*.c` files. This is the main remaining work.
-
 ```bash
-# Standard SDL/OpenGL build (works)
-make
-
-# Terminal build (requires software renderer - WIP)
+# Terminal build
 make -f Makefile.terminal
+
+# Clean
+make -f Makefile.terminal clean
+
+# Build produces: dquake-terminal
 ```
 
-### Compiling Terminal Components
+## How It Works
 
-To verify the terminal-specific code compiles:
+DQuake uses extensive GL stubbing to run Quake's game logic without actual rendering:
 
-```bash
-# Compile just the terminal components
-gcc -c -Wall -DUSE_TERMINAL -DNDEBUG -O2 \
-    vid_terminal.c in_terminal.c sys_terminal.c main_terminal.c \
-    -I.
+1. **GL Compatibility Layer** (`gl_compat.h`): Provides empty inline functions for all OpenGL calls
+2. **Software Stubs** (`sw_stub.c`): Implements required render callbacks as no-ops
+3. **Model Types** (`sw_model.h`): Software-renderer-compatible model structures
+4. **Terminal Driver** (`vid_terminal.c`): Handles terminal setup and potential output
+
+## Next Steps for Full Rendering
+
+To get actual visual output:
+
+1. **Implement Framebuffer Capture**: The game logic runs but frames aren't rendered
+2. **Add Software Renderer**: Either port from original Quake or write new one
+3. **Connect to Terminal**: Link renderer output to `VID_Update()` in `vid_terminal.c`
+
+See [TERMINAL_RENDER_PLAN.md](TERMINAL_RENDER_PLAN.md) for detailed roadmap.
+
+## Tested Output
+
+```
+$ ./dquake-terminal -basedir ~/Games/quake
+VID_Init: Initializing terminal video driver
+VID_Init: Terminal size 180x56
+Terminal: TERM=xterm-256color COLORTERM=truecolor truecolor=yes
+Mod_Init: Terminal mode
+R_Init: Terminal mode initialized
+SNDDMA_Init: No sound in terminal mode
+
+DQuake Terminal Mode - Frame Update
 ```
 
-## Project Structure
-
-```
-dquake/
-├── Quake/                          # Original QuakeSpasm source
-│   ├── gl_*.c                      # OpenGL renderer (needs replacement)
-│   ├── vid_terminal.c              # Terminal video driver (NEW)
-│   ├── in_terminal.c               # Terminal input driver (NEW)
-│   ├── sys_terminal.c              # Terminal system functions (NEW)
-│   ├── main_terminal.c             # Terminal main entry (NEW)
-│   ├── terminal_types.h            # GL type stubs (NEW)
-│   └── TERMINAL_RENDER_PLAN.md     # Technical design doc (NEW)
-├── Makefile                        # Standard build (SDL/OpenGL)
-├── Makefile.terminal               # Terminal build (partial)
-└── README.md                       # This file
-```
+The game loop runs correctly; only terminal rendering output is missing.
 
 ## QuakeSpasm Attribution
 
-DQuake is based on [QuakeSpasm](https://github.com/Novum/quakespasm), a modern, maintained Quake engine derived from FitzQuake.
-
-QuakeSpasm credits:
-- John Fitzgibbons (FitzQuake)
-- Kristian Duske
-- Ozkan Sezer, Eric Wasylishen & others (QuakeSpasm maintainers)
-
-Original Quake by id Software (1996).
+DQuake is based on [QuakeSpasm](https://github.com/Novum/quakespasm), a modern Quake engine.
 
 ## License
 
 GNU General Public License v2.0 or later - see [LICENSE.txt](LICENSE.txt)
-
-The terminal-specific additions (`vid_terminal.c`, `in_terminal.c`, etc.) are also GPL v2+.
-
-## Contributing
-
-1. Fork the repo
-2. Create a feature branch
-3. Implement software renderer or other missing pieces
-4. Submit a pull request
-
-## Next Steps
-
-See [TERMINAL_RENDER_PLAN.md](TERMINAL_RENDER_PLAN.md) for the detailed roadmap and technical architecture.
-
-### Immediate Priorities
-
-1. **Software Renderer**: Either port from original Quake software renderer or implement new one
-2. **Framebuffer Capture**: Get pixel data from renderer to terminal
-3. **Truecolor Output**: Implement full ANSI escape sequence rendering
-4. **Testing**: Verify with real game data (PAK files)

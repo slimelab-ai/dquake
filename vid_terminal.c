@@ -371,13 +371,10 @@ static void Terminal_ShowCursor (qboolean show)
 	fflush (stdout);
 }
 
-// ========================================================================
-// Menu callbacks (stub implementations)
-// ========================================================================
-
-void (*vid_menudrawfn)(void) = NULL;
-void (*vid_menukeyfn)(int key) = NULL;
-void (*vid_menucmdfn)(void) = NULL;
+// Menu callbacks (defined in sw_stub.c)
+// extern void (*vid_menudrawfn)(void);
+// extern void (*vid_menukeyfn)(int key);
+// extern void (*vid_menucmdfn)(void);
 
 /*
 =================
